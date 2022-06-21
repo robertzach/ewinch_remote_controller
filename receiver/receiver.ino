@@ -7,6 +7,8 @@
  * 
  */
 
+#include "LiPoCheck.h"    //to calculate battery % based on cell Voltage
+
 #include <Pangodream_18650_CL.h>
 #include <SPI.h>
 #include <LoRa.h>
@@ -35,12 +37,14 @@ String packet ;
 //#define READS 20
 Pangodream_18650_CL BL(35); // pin 34 old / 35 new v2.1 hw
 
+//vesc battery
+int numberOfCells = 16;
+
 //Using VescUart librarie to read from Vesc (https://github.com/SolidGeek/VescUart/)
 #include <VescUart.h>
 #define VESC_RX  14    //connect to TX on Vesc
 #define VESC_TX  2    //connect to RX on Vesc
 VescUart vescUART;
-uint16_t vescTachometer = 0;
 
 // PWM signal to vesc
 #define PWM_PIN_OUT  13 //Define Digital PIN
@@ -48,12 +52,6 @@ uint16_t vescTachometer = 0;
 #define PWM_TIME_100    2000.0   //PWM time in ms for 100%, PWM above will be ignored!!
 
 static int loopStep = 0;
-uint8_t targetPull = 0;   // pull value range from 0 - 255
-int defaultPullScale = 11;  //in %
-int prePullScale = 20;      //in %
-int takeOffPullScale = 50;  //in %
-int fullPullScale = 80;     //in %
-int strongPullScale = 100;  //in %
 
 //send by transmitter
 struct LoraTxMessage {
@@ -65,14 +63,22 @@ struct LoraTxMessage {
 struct LoraRxMessage {
    uint8_t pullValue;
    uint16_t tachometer;
+   uint8_t vescBatteryPercentage;
+   uint8_t vescTempMotor;
 };
 
 struct LoraTxMessage loraTxMessage;
 struct LoraRxMessage loraRxMessage;
 
 int currentPull = 0;    // pull value send to VESC
-uint8_t loraPullValue = 0;    // received from lora
+uint8_t loraPullValue = 0;    // received from lora transmitter
 int smoothStep = 0;    // used to smooth pull changes
+int defaultPullScale = 11;  //in %
+int prePullScale = 20;      //in %
+int takeOffPullScale = 50;  //in %
+int fullPullScale = 80;     //in %
+int strongPullScale = 100;  //in %
+
 unsigned long lastTxLoraMessageMillis = 0;
 unsigned long previousTxLoraMessageMillis = 0;
 unsigned long lastRxLoraMessageMillis = 0;
@@ -99,6 +105,13 @@ void setup() {
   Serial1.begin(115200, SERIAL_8N1, VESC_RX, VESC_TX);
   vescUART.setSerialPort(&Serial1);
   //vescUART.setDebugPort(&Serial);
+  //auto detect battery cells
+  if (vescUART.getVescValues()) {
+        numberOfCells = CountCells(vescUART.data.inpVoltage);
+        Serial.printf("Battery detected with: \n");
+        Serial.print(numberOfCells);
+        Serial.printf(" Cells \n");
+  }
   
   //OLED display
   pinMode(16,OUTPUT);
@@ -132,7 +145,6 @@ void setup() {
   display.setFont(ArialMT_Plain_10);
   Serial.printf("Starting Receiver \n");
   display.drawString(0, 0, "Starting Receiver");
-  LoRa.receive();   //???? Continuous receive mode, callback function
 }
 
 
@@ -172,6 +184,8 @@ void loop() {
           delay(10);
           loraRxMessage.pullValue = currentPull;
           loraRxMessage.tachometer = abs(vescUART.data.tachometer)/100;     //in m
+          loraRxMessage.vescBatteryPercentage = CapCheckPerc(vescUART.data.inpVoltage, numberOfCells);
+          loraRxMessage.vescTempMotor = vescUART.data.tempMotor;
           if (LoRa.beginPacket()) {
               LoRa.write((uint8_t*)&loraRxMessage, sizeof(loraRxMessage));
               LoRa.endPacket();
@@ -255,7 +269,7 @@ void loop() {
             //SerialPrint(measuredVescVal, &DEBUGSERIAL);
             Serial.println(vescUART.data.tachometer);
             /*
-            Serial.println(vescUART.data.inputVoltage);
+            Serial.println(vescUART.data.inpVoltage);
             Serial.println(vescUART.data.dutyCycleNow);
             Serial.println(vescUART.data.tempMotor);
             Serial.println(vescUART.data.tempMosfet);
