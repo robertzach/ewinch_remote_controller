@@ -37,7 +37,7 @@ String packet ;
 //#define READS 20
 Pangodream_18650_CL BL(35); // pin 34 old / 35 new v2.1 hw
 
-//vesc battery
+//vesc battery, is overwritten during auto detection on startup
 int numberOfCells = 16;
 
 //Using VescUart librarie to read from Vesc (https://github.com/SolidGeek/VescUart/)
@@ -63,6 +63,7 @@ struct LoraTxMessage {
 struct LoraRxMessage {
    uint8_t pullValue;
    uint16_t tachometer;
+   uint8_t dutyCycleNow;
    uint8_t vescBatteryPercentage;
    uint8_t vescTempMotor;
 };
@@ -184,7 +185,8 @@ void loop() {
           delay(10);
           loraRxMessage.pullValue = currentPull;
           loraRxMessage.tachometer = abs(vescUART.data.tachometer)/100;     //in m
-          loraRxMessage.vescBatteryPercentage = CapCheckPerc(vescUART.data.inpVoltage, numberOfCells);
+          loraRxMessage.dutyCycleNow = vescUART.data.dutyCycleNow;     //in %
+          loraRxMessage.vescBatteryPercentage = CapCheckPerc(vescUART.data.inpVoltage, numberOfCells);    // in %
           loraRxMessage.vescTempMotor = vescUART.data.tempMotor;
           if (LoRa.beginPacket()) {
               LoRa.write((uint8_t*)&loraRxMessage, sizeof(loraRxMessage));

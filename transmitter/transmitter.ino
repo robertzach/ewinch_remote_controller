@@ -45,6 +45,7 @@ Button2 btnUp = Button2(BUTTON_UP);
 Button2 btnDown = Button2(BUTTON_DOWN);
 
 static int loopStep = 0;
+bool toogleSlow = true;
 uint8_t targetPull = 0;   // pull value range from 0 - 255
 int currentPull = 0;          // current active pull on vesc
 bool stateChanged = false;
@@ -66,12 +67,14 @@ struct LoraTxMessage {
 struct LoraRxMessage {
    uint8_t pullValue;
    uint16_t tachometer;
+   uint8_t dutyCycleNow;
+   uint8_t vescBatteryPercentage;
+   uint8_t vescTempMotor;
 };
 
 struct LoraTxMessage loraTxMessage;
 struct LoraRxMessage loraRxMessage;
 
-uint16_t vescTachometer = 0;
 unsigned long lastTxLoraMessageMillis = 0;    //last message send
 unsigned long lastRxLoraMessageMillis = 0;    //last message received
 unsigned long previousRxLoraMessageMillis = 0;
@@ -127,14 +130,21 @@ void loop() {
     loopStep++;
   
     // screen
+    if (loopStep % 100 == 0) {
+      toogleSlow = !toogleSlow;
+    }
     if (loopStep % 10 == 0) {
       display.clear();
       display.setTextAlignment(TEXT_ALIGN_LEFT);
-      display.setFont(ArialMT_Plain_10);  //10, 16, 24
-      display.drawString(0, 0, String("TX: (") + BL.getBatteryChargeLevel() + "%, " + rssi + "dBm, " + snr + ")");
+      display.setFont(ArialMT_Plain_16);  //10, 16, 24
+      if (toogleSlow) {
+          display.drawString(0, 0, String("B: ") + loraRxMessage.vescBatteryPercentage + "%, T: " + loraRxMessage.vescTempMotor + " C");        
+      } else {
+          display.drawString(0, 0, String("TX: (") + BL.getBatteryChargeLevel() + "%, " + rssi + "dBm, " + snr + ")");        
+      }
       display.setFont(ArialMT_Plain_24);  //10, 16, 24
-      display.drawString(0, 11, String(currentState) + String(" (") + targetPull + "/" + currentPull + String(")"));
-      display.drawString(0, 36, String("T: ") + vescTachometer);
+      display.drawString(0, 14, String(currentState) + String(" (") + targetPull + "/" + currentPull + String(")"));
+      display.drawString(0, 36, String(loraRxMessage.tachometer) + " | " + String(loraRxMessage.dutyCycleNow) );
       display.display();
     }
     
@@ -145,13 +155,13 @@ void loop() {
       //TODO read only acknowledgement packets
       if (true) {
           currentPull = loraRxMessage.pullValue;
-          vescTachometer = loraRxMessage.tachometer;
           //TODO get duty cycle, battery % and motor temp
           previousRxLoraMessageMillis = lastRxLoraMessageMillis;  // remember time of previous paket
           lastRxLoraMessageMillis = millis();
           rssi = LoRa.packetRssi();
           snr = LoRa.packetSnr();
           Serial.printf("Value received: %d, RSSI: %d: , SNR: %d \n", loraRxMessage.pullValue, rssi, snr);
+          Serial.printf("tacho: %d, dutty: %d: \n", loraRxMessage.tachometer, loraRxMessage.dutyCycleNow);
       }
    }
   
