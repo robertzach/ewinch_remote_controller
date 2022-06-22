@@ -1,0 +1,47 @@
+diff --git a/applications/app_ppm.c b/applications/app_ppm.c
+index a86c64f..bb20342 100644
+--- a/applications/app_ppm.c
++++ b/applications/app_ppm.c
+@@ -28,6 +28,7 @@
+ #include "utils.h"
+ #include "comm_can.h"
+ #include <math.h>
++#include <stdlib.h>
+ 
+ // Settings
+ #define MAX_CAN_AGE						0.1
+@@ -49,6 +50,7 @@ static volatile ppm_config config;
+ static volatile int pulses_without_power = 0;
+ static float input_val = 0.0;
+ static volatile float direction_hyst = 0;
++static float my_default_pull = 0.0;
+ 
+ // Private functions
+ 
+@@ -115,6 +117,26 @@ static THD_FUNCTION(ppm_thread, arg) {
+ 			timeout_reset();
+ 		}
+ 
++		//my autostop winch
++		//tachometer_value 1500 = 15m
++		if ( (((float)ADC_Value[ADC_IND_EXT])/4095) * V_REG > 3 && abs(mc_interface_get_tachometer_value(false)) < 1500 ){
++			mc_interface_set_brake_current(fabsf(20));
++			timeout_reset();
++			continue;
++		} 
++		//my default pull
++		#ifdef ADC_IND_EXT2
++		if ( (((float)ADC_Value[ADC_IND_EXT2])/4095) * V_REG > 0.5) {
++			my_default_pull = ((((float)ADC_Value[ADC_IND_EXT2])/4095) * V_REG - 0.5) * 30;	//0 - 100% after 0.5V 
++			//set default pull value
++			mc_interface_set_current(my_default_pull * 0.35);	//0 - 35A
++			//mc_interface_set_current(9);
++			timeout_reset();
++			continue;
++		}
++		#endif
++
++
+ 		const volatile mc_configuration *mcconf = mc_interface_get_configuration();
+ 		const float rpm_now = mc_interface_get_rpm();
+ 		float servo_val = servodec_get_servo(0);
