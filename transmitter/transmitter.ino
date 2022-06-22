@@ -5,7 +5,9 @@
  * receives acknowlegement with current parameters
  * 
  */
-int myID = 0;   //TODO implement id support to lock communication to a specific transmitter...
+// communication is locked to a specific transmitter for 5 seconds after his last message
+// admin ID 0 can allays take over communication
+static int myID = 0;    // TODO set to unique number from 1 - 254
 
 #include <Pangodream_18650_CL.h>
 #include <SPI.h>
@@ -59,7 +61,7 @@ unsigned long lastStateSwitchMillis = 0;
 
 //send by transmitter
 struct LoraTxMessage {
-//   uint8_t id;        // TODO allow only one ID to control the winch on a given time
+   uint8_t id;
    uint8_t pullValue;
    uint8_t pullValueBackup;
 };
@@ -116,6 +118,8 @@ void setup() {
   btnDown.setLongClickTime(500);
   btnDown.setLongClickDetectedHandler(btnDownLongClickDetected);
   //btnDown.setDoubleClickHandler(btnDownDoubleClick);
+
+  loraTxMessage.id = myID;
   
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_LEFT);
@@ -140,7 +144,7 @@ void loop() {
       if (toogleSlow) {
           display.drawString(0, 0, String("B: ") + loraRxMessage.vescBatteryPercentage + "%, T: " + loraRxMessage.vescTempMotor + " C");        
       } else {
-          display.drawString(0, 0, String("TX: (") + BL.getBatteryChargeLevel() + "%, " + rssi + "dBm, " + snr + ")");        
+          display.drawString(0, 0, String("T-") + loraTxMessage.id + ": " + BL.getBatteryChargeLevel() + "%, " + rssi + "dBm, " + snr + ")");        
       }
       display.setFont(ArialMT_Plain_24);  //10, 16, 24
       display.drawString(0, 14, String(currentState) + String(" (") + targetPull + "/" + currentPull + String(")"));

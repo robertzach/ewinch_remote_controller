@@ -52,10 +52,11 @@ VescUart vescUART;
 #define PWM_TIME_100    2000.0   //PWM time in ms for 100%, PWM above will be ignored!!
 
 static int loopStep = 0;
+static uint8_t activeTxId = 0;
 
 //send by transmitter
 struct LoraTxMessage {
-//   uint8_t id;        // TODO allow only one ID to control the winch on a given time
+   uint8_t id;        // allow only one ID to control the winch at a given time
    uint8_t pullValue;
    uint8_t pullValueBackup;
 };
@@ -166,8 +167,16 @@ void loop() {
     // packet from transmitter
     if (LoRa.parsePacket() >= sizeof(loraTxMessage) ) {
       LoRa.readBytes((uint8_t *)&loraTxMessage, sizeof(loraTxMessage));
-      // TODO check ID, allow only one ID to control the winch
-      if (loraTxMessage.pullValue == loraTxMessage.pullValueBackup) {
+      // allow only one ID to control the winch at a given time
+      // after 5 seconds without a message, a new id is allowed
+      if (millis() > lastTxLoraMessageMillis + 5000){
+        activeTxId = loraTxMessage.id;
+      }
+      // The admin id 0 can allways take over
+      if (loraTxMessage.id == 0){
+        activeTxId = loraTxMessage.id;
+      }
+      if (loraTxMessage.id == activeTxId && loraTxMessage.pullValue == loraTxMessage.pullValueBackup) {
           loraPullValue = loraTxMessage.pullValue;
           previousTxLoraMessageMillis = lastTxLoraMessageMillis;  // remember time of previous paket
           lastTxLoraMessageMillis = millis();
@@ -191,6 +200,11 @@ void loop() {
               Serial.println("Lora send busy");
           }
           
+      } else {
+        Serial.println("Wrong transmitter id or backup Value:");
+        Serial.println(loraTxMessage.id);
+        Serial.println(loraTxMessage.pullValue);
+        Serial.println(loraTxMessage.pullValueBackup);
       }
    }
   
