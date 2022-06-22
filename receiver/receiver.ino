@@ -54,21 +54,7 @@ VescUart vescUART;
 static int loopStep = 0;
 static uint8_t activeTxId = 0;
 
-//send by transmitter
-struct LoraTxMessage {
-   uint8_t id;        // allow only one ID to control the winch at a given time
-   uint8_t pullValue;
-   uint8_t pullValueBackup;
-};
-//send by receiver (acknowledgement)
-struct LoraRxMessage {
-   uint8_t pullValue;
-   uint16_t tachometer;
-   uint8_t dutyCycleNow;
-   uint8_t vescBatteryPercentage;
-   uint8_t vescTempMotor;
-};
-
+#include "common.h"
 struct LoraTxMessage loraTxMessage;
 struct LoraRxMessage loraRxMessage;
 

@@ -59,21 +59,7 @@ int fullPullScale = 80;     //in %
 int strongPullScale = 100;  //in %
 unsigned long lastStateSwitchMillis = 0;
 
-//send by transmitter
-struct LoraTxMessage {
-   uint8_t id;
-   uint8_t pullValue;
-   uint8_t pullValueBackup;
-};
-//send by receiver (acknowledgement)
-struct LoraRxMessage {
-   uint8_t pullValue;
-   uint16_t tachometer;
-   uint8_t dutyCycleNow;
-   uint8_t vescBatteryPercentage;
-   uint8_t vescTempMotor;
-};
-
+#include "common.h"
 struct LoraTxMessage loraTxMessage;
 struct LoraRxMessage loraRxMessage;
 
