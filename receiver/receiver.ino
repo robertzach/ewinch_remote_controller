@@ -162,7 +162,8 @@ void loop() {
       display.setFont(ArialMT_Plain_24);  //10, 16, 24
       display.drawString(0, 11, String("Pull: ") + currentPull);
       display.setFont(ArialMT_Plain_10);  //10, 16, 24
-      display.drawString(0, 36, String("Error / Uptime{min}: ") + loraErrorCount + " / " + millis()/60000);
+      //display.drawString(0, 36, String("Error / Uptime{min}: ") + loraErrorCount + " / " + millis()/60000);
+      display.drawString(0, 36, String("B: ") + loraRxMessage.vescBatteryPercentage + "%, M " + loraRxMessage.vescTempMotor + "C");
       display.drawString(0, 48, String("Last TX / RX: ") + lastTxLoraMessageMillis/100 + " / " + lastRxLoraMessageMillis/100);
       display.display();
     }
@@ -233,7 +234,7 @@ void loop() {
           // smooth changes --> change rate e.g. max. 200 / second
           //reduce pull
           if (currentPull > loraPullValue) {
-              smoothStep = 170 * (millis() - lastWritePWMMillis) / 1000;
+              smoothStep = 200 * (millis() - lastWritePWMMillis) / 1000;
               if ((currentPull - smoothStep) > loraPullValue)   //avoid overshooting
                   currentPull = currentPull - smoothStep;
               else
