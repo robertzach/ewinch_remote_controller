@@ -106,13 +106,6 @@ void setup() {
   Serial1.begin(115200, SERIAL_8N1, VESC_RX, VESC_TX);
   vescUART.setSerialPort(&Serial1);
   //vescUART.setDebugPort(&Serial);
-  //auto detect battery cells
-  if (vescUART.getVescValues()) {
-        numberOfCells = CountCells(vescUART.data.inpVoltage);
-        Serial.printf("Battery detected with: \n");
-        Serial.print(numberOfCells);
-        Serial.printf(" Cells \n");
-  }
   
   //OLED display
   pinMode(16,OUTPUT);
@@ -285,5 +278,14 @@ void loop() {
             //measuredVescVal.tachometer = 0;
             Serial.println("Failed to get data from VESC!");
           }
+      }
+
+      //workaround cell detection
+      if (loopStep % 300 == 0) {
+          //auto detect battery cells
+          numberOfCells = CountCells(vescUART.data.inpVoltage);
+          Serial.printf("Battery detected with: \n");
+          Serial.print(numberOfCells);
+          Serial.printf(" Cells \n");
       }
 }
