@@ -7,6 +7,9 @@
  * 
  */
 
+//vesc battery number of cells
+static int numberOfCells = 16;
+
 #include "LiPoCheck.h"    //to calculate battery % based on cell Voltage
 
 #include <Pangodream_18650_CL.h>
@@ -37,8 +40,6 @@ String packet ;
 //#define READS 20
 Pangodream_18650_CL BL(35); // pin 34 old / 35 new v2.1 hw
 
-//vesc battery, is overwritten during auto detection on startup
-int numberOfCells = 16;
 
 //Using VescUart librarie to read from Vesc (https://github.com/SolidGeek/VescUart/)
 #include <VescUart.h>
@@ -174,7 +175,7 @@ void loop() {
           delay(10);
           loraRxMessage.pullValue = currentPull;
           loraRxMessage.tachometer = abs(vescUART.data.tachometer)/100;     //in m
-          loraRxMessage.dutyCycleNow = vescUART.data.dutyCycleNow;     //in %
+          loraRxMessage.dutyCycleNow = vescUART.data.dutyCycleNow * 100;     //in %
           loraRxMessage.vescBatteryPercentage = CapCheckPerc(vescUART.data.inpVoltage, numberOfCells);    // in %
           loraRxMessage.vescTempMotor = vescUART.data.tempMotor;
           if (LoRa.beginPacket()) {
@@ -263,10 +264,10 @@ void loop() {
       if (loopStep % 20 == 0) {
         if (vescUART.getVescValues()) {
             //SerialPrint(measuredVescVal, &DEBUGSERIAL);
-            Serial.println(vescUART.data.tachometer);
             /*
+            Serial.println(vescUART.data.tachometer);
             Serial.println(vescUART.data.inpVoltage);
-            Serial.println(vescUART.data.dutyCycleNow);
+            Serial.println(vescUART.data.dutyCycleNow);            
             Serial.println(vescUART.data.tempMotor);
             Serial.println(vescUART.data.tempMosfet);
             vescUART.printVescValues();
@@ -278,14 +279,5 @@ void loop() {
             //measuredVescVal.tachometer = 0;
             Serial.println("Failed to get data from VESC!");
           }
-      }
-
-      //workaround cell detection
-      if (loopStep % 300 == 0) {
-          //auto detect battery cells
-          numberOfCells = CountCells(vescUART.data.inpVoltage);
-          Serial.printf("Battery detected with: \n");
-          Serial.print(numberOfCells);
-          Serial.printf(" Cells \n");
       }
 }
