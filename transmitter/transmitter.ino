@@ -8,6 +8,7 @@
 // communication is locked to a specific transmitter for 5 seconds after his last message
 // admin ID 0 can allays take over communication
 static int myID = 0;    // TODO set to unique number from 1 - 254
+//#define   WINCH_MONITOR_ONLY      //for viewing current state only, no lora messages will be send. will be removed in a separate project in the future.
 
 #include <Pangodream_18650_CL.h>
 #include <SPI.h>
@@ -154,7 +155,7 @@ void loop() {
           Serial.printf("tacho: %d, dutty: %d: \n", loraRxMessage.tachometer, loraRxMessage.dutyCycleNow);
       }
    }
-  
+
   // if no lora message for more then 1,5s --> show error on screen + acustic
   if (millis() > lastRxLoraMessageMillis + 1500 ) {
         //TODO acustic information
@@ -167,7 +168,6 @@ void loop() {
             loraErrorCount = loraErrorCount + 1;
        }
   }
-
   
         // state machine
         // -2 = hard brake -1 = soft brake, 0 = no pull / no brake, 1 = default pull (2kg), 2 = pre pull, 3 = take off pull, 4 = full pull, 5 = extra strong pull
@@ -203,7 +203,8 @@ void loop() {
           }
 
         delay(10);
-        
+
+#ifndef WINCH_MONITOR_ONLY
         // send Lora message every 400ms  --> three lost packages lead to failsafe on receiver (>1,5s)
         // send immediatly if state has changed
         if (millis() > lastTxLoraMessageMillis + 400 || stateChanged) {
@@ -219,6 +220,7 @@ void loop() {
                 Serial.println("Lora send busy");
             }
         }
+#endif
         btnUp.loop();
         btnDown.loop();
         delay(10);
