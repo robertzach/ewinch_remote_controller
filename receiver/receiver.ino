@@ -174,7 +174,7 @@ void loop() {
           // send ackn after receiving a value
           delay(10);
           loraRxMessage.pullValue = currentPull;
-          loraRxMessage.tachometer = abs(vescUART.data.tachometer)/100;     //in m
+          loraRxMessage.tachometer = abs(vescUART.data.tachometer)/1000;     // %100 --> in m, %10 --> to use only one byte for up to 2500m
           loraRxMessage.dutyCycleNow = vescUART.data.dutyCycleNow * 100;     //in %
           loraRxMessage.vescBatteryPercentage = CapCheckPerc(vescUART.data.inpVoltage, numberOfCells);    // in %
           loraRxMessage.vescTempMotor = vescUART.data.tempMotor;

@@ -7,8 +7,7 @@
  */
 // communication is locked to a specific transmitter for 5 seconds after his last message
 // admin ID 0 can allays take over communication
-static int myID = 0;    // TODO set to unique number from 1 - 254
-//#define   WINCH_MONITOR_ONLY      //for viewing current state only, no lora messages will be send. will be removed in a separate project in the future.
+static int myID = 0;    // set to your desired transmitter id!!! [unique number from 1 - 15]
 
 #include <Pangodream_18650_CL.h>
 #include <SPI.h>
@@ -135,25 +134,22 @@ void loop() {
       }
       display.setFont(ArialMT_Plain_24);  //10, 16, 24
       display.drawString(0, 14, String(currentState) + String(" (") + targetPull + "/" + currentPull + String(")"));
-      display.drawString(0, 36, String(loraRxMessage.tachometer) + " | " + String(loraRxMessage.dutyCycleNow) );
+      display.drawString(0, 36, String(loraRxMessage.tachometer * 10) + " | " + String(loraRxMessage.dutyCycleNow) );
       display.display();
     }
     
     // LoRa data available?
-    //=acknowledgement from receiver
+    //==acknowledgement from receiver?
     if (LoRa.parsePacket() >= sizeof(loraRxMessage) ) {
-      LoRa.readBytes((uint8_t *)&loraRxMessage, sizeof(loraRxMessage));
-      //TODO read only acknowledgement packets
-      if (true) {
-          currentPull = loraRxMessage.pullValue;
-          //TODO get duty cycle, battery % and motor temp
-          previousRxLoraMessageMillis = lastRxLoraMessageMillis;  // remember time of previous paket
-          lastRxLoraMessageMillis = millis();
-          rssi = LoRa.packetRssi();
-          snr = LoRa.packetSnr();
-          Serial.printf("Value received: %d, RSSI: %d: , SNR: %d \n", loraRxMessage.pullValue, rssi, snr);
-          Serial.printf("tacho: %d, dutty: %d: \n", loraRxMessage.tachometer, loraRxMessage.dutyCycleNow);
-      }
+        LoRa.readBytes((uint8_t *)&loraRxMessage, sizeof(loraRxMessage));
+        currentPull = loraRxMessage.pullValue;
+        //TODO get duty cycle, battery % and motor temp
+        previousRxLoraMessageMillis = lastRxLoraMessageMillis;  // remember time of previous paket
+        lastRxLoraMessageMillis = millis();
+        rssi = LoRa.packetRssi();
+        snr = LoRa.packetSnr();
+        Serial.printf("Value received: %d, RSSI: %d: , SNR: %d \n", loraRxMessage.pullValue, rssi, snr);
+        Serial.printf("tacho: %d, dutty: %d: \n", loraRxMessage.tachometer * 10, loraRxMessage.dutyCycleNow);
    }
 
   // if no lora message for more then 1,5s --> show error on screen + acustic
@@ -204,7 +200,6 @@ void loop() {
 
         delay(10);
 
-#ifndef WINCH_MONITOR_ONLY
         // send Lora message every 400ms  --> three lost packages lead to failsafe on receiver (>1,5s)
         // send immediatly if state has changed
         if (millis() > lastTxLoraMessageMillis + 400 || stateChanged) {
@@ -220,7 +215,7 @@ void loop() {
                 Serial.println("Lora send busy");
             }
         }
-#endif
+
         btnUp.loop();
         btnDown.loop();
         delay(10);
