@@ -59,6 +59,8 @@ static uint8_t activeTxId = 0;
 struct LoraTxMessage loraTxMessage;
 struct LoraRxMessage loraRxMessage;
 
+int currentId = 0;
+int currentState = 0;
 int currentPull = 0;    // pull value send to VESC
 uint8_t loraPullValue = 0;    // received from lora transmitter
 int smoothStep = 0;    // used to smooth pull changes
@@ -141,12 +143,12 @@ void loop() {
       display.clear();
       display.setTextAlignment(TEXT_ALIGN_LEFT);
       display.setFont(ArialMT_Plain_10);  //10, 16, 24
-      display.drawString(0, 0, loraTxMessage.id + String("-RX: (") + BL.getBatteryChargeLevel() + "%, " + rssi + "dBm, " + snr + ")");
+      display.drawString(0, 0, currentId + String("-RX: (") + BL.getBatteryChargeLevel() + "%, " + rssi + "dBm, " + snr + ")");
       display.setFont(ArialMT_Plain_24);  //10, 16, 24
-      if ((loraTxMessage.currentState - 2) > 0){
-          display.drawString(0, 11, String("P ") + (loraTxMessage.currentState - 2) + ": (" + currentPull + ")");  
+      if (currentState > 0){
+          display.drawString(0, 11, String("P ") + currentState + ": (" + currentPull + ")");  
       } else {
-          display.drawString(0, 11, String("B ") + (loraTxMessage.currentState - 2) + ": (" + currentPull + ")");    
+          display.drawString(0, 11, String("B ") + currentState + ": (" + currentPull + ")");    
       }
       display.setFont(ArialMT_Plain_10);  //10, 16, 24
       //display.drawString(0, 36, String("Error / Uptime{min}: ") + loraErrorCount + " / " + millis()/60000);
@@ -171,6 +173,8 @@ void loop() {
       }
       if (loraTxMessage.id == activeTxId && loraTxMessage.pullValue == loraTxMessage.pullValueBackup) {
           loraPullValue = loraTxMessage.pullValue;
+          currentId = loraTxMessage.id;
+          currentState = loraTxMessage.currentState - 2;
           previousTxLoraMessageMillis = lastTxLoraMessageMillis;  // remember time of previous paket
           lastTxLoraMessageMillis = millis();
           rssi = LoRa.packetRssi();
