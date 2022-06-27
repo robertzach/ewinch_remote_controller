@@ -141,12 +141,16 @@ void loop() {
       display.clear();
       display.setTextAlignment(TEXT_ALIGN_LEFT);
       display.setFont(ArialMT_Plain_10);  //10, 16, 24
-      display.drawString(0, 0, String("RX: (") + BL.getBatteryChargeLevel() + "%, " + rssi + "dBm, " + snr + ")");
+      display.drawString(0, 0, loraTxMessage.id + String("-RX: (") + BL.getBatteryChargeLevel() + "%, " + rssi + "dBm, " + snr + ")");
       display.setFont(ArialMT_Plain_24);  //10, 16, 24
-      display.drawString(0, 11, String("Pull: ") + currentPull);
+      if ((loraTxMessage.currentState - 2) > 0){
+          display.drawString(0, 11, String("P ") + (loraTxMessage.currentState - 2) + ": (" + currentPull + ")");  
+      } else {
+          display.drawString(0, 11, String("B ") + (loraTxMessage.currentState - 2) + ": (" + currentPull + ")");    
+      }
       display.setFont(ArialMT_Plain_10);  //10, 16, 24
       //display.drawString(0, 36, String("Error / Uptime{min}: ") + loraErrorCount + " / " + millis()/60000);
-      display.drawString(0, 36, String("B: ") + vescBattery + "%, M " + vescTempMotor + "C");
+      display.drawString(0, 36, String("B: ") + vescBattery + "%, M: " + vescTempMotor + "C");
       display.drawString(0, 48, String("Last TX / RX: ") + lastTxLoraMessageMillis/100 + " / " + lastRxLoraMessageMillis/100);
       display.display();
     }
