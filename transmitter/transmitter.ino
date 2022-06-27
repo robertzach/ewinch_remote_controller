@@ -51,7 +51,7 @@ bool toogleSlow = true;
 uint8_t targetPull = 0;   // pull value range from 0 - 255
 int currentPull = 0;          // current active pull on vesc
 bool stateChanged = false;
-int currentState = 0;   // -1 = stopped/brake, 0 = no pull/no brake, 1 = default pull (2kg), 2 = pre pull, 3 = take off pull, 4 = full pull, 5 = extra strong pull
+int currentState = -1;   // -1 = stopped/brake, 0 = no pull/no brake, 1 = default pull (2kg), 2 = pre pull, 3 = take off pull, 4 = full pull, 5 = extra strong pull
 int defaultPullScale = 11;  //in %
 int prePullScale = 20;      //in %
 int takeOffPullScale = 50;  //in %
@@ -106,7 +106,8 @@ void setup() {
   btnDown.setPressedHandler(btnPressed);
   btnDown.setLongClickTime(500);
   btnDown.setLongClickDetectedHandler(btnDownLongClickDetected);
-  //btnDown.setDoubleClickHandler(btnDownDoubleClick);
+  btnDown.setDoubleClickTime(400);
+  btnDown.setDoubleClickHandler(btnDownDoubleClick);
     
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_LEFT);
@@ -202,7 +203,7 @@ void loop() {
               targetPull = 0; // -> hard brake
               break;
             case -1:
-              targetPull = 4; // -> soft brake
+              targetPull = 3; // -> soft brake
               break;
             case 0:
               targetPull = 5; // -> neutral, no pull / no brake
@@ -258,6 +259,10 @@ void btnPressed(Button2& btn) {
         //do not switch up to fast
         if (millis() > lastStateSwitchMillis + 1000 && currentState < 5) {
           currentState = currentState + 1;
+          // skip neutral state to prevent line mess up
+          if (currentState == 0 ) {
+              currentState = currentState + 1;
+          }
           lastStateSwitchMillis = millis();
           stateChanged = true;
         }
@@ -279,4 +284,12 @@ void btnDownLongClickDetected(Button2& btn) {
     currentState = -2;    //brake
     lastStateSwitchMillis = millis();
     stateChanged = true;
+}
+void btnDownDoubleClick(Button2& btn) {
+  // only get to neutral state from brake
+  if (currentState <= -1) {
+    currentState = 0;    // neutral
+    lastStateSwitchMillis = millis();
+    stateChanged = true;
+  }
 }
