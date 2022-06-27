@@ -107,14 +107,36 @@ void setup() {
   btnDown.setLongClickTime(500);
   btnDown.setLongClickDetectedHandler(btnDownLongClickDetected);
   //btnDown.setDoubleClickHandler(btnDownDoubleClick);
-
-  loraTxMessage.id = myID;
-  
+    
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.setFont(ArialMT_Plain_10);
   Serial.printf("Starting Transmitter \n");
   display.drawString(0, 0, "Starting Transmitter");
+
+  // admin --> scan for existing transmitter for a few seconds --> start up with his current pull state
+  if (myID == 0 ) {
+      lastTxLoraMessageMillis = millis();
+      while (millis() < lastTxLoraMessageMillis + 4000) {
+          // packet from transmitter
+          if (LoRa.parsePacket() >= sizeof(loraTxMessage) ) {
+            LoRa.readBytes((uint8_t *)&loraTxMessage, sizeof(loraTxMessage));
+            if (loraTxMessage.pullValue == loraTxMessage.pullValueBackup) {
+                //found --> read state and exit
+                currentState = loraTxMessage.currentState - 2;
+                targetPull = loraTxMessage.pullValue;
+                Serial.printf("Found existing transmitter, starting up with state: %d: %d \n", currentState, targetPull);
+                //exit search loop
+                lastTxLoraMessageMillis = millis() - 4000;
+            }
+          } 
+          delay(10);
+       }
+   }
+
+   // reset to my transmitter id
+   loraTxMessage.id = myID;
+  
 }
 
 
