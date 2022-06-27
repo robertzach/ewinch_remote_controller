@@ -19,15 +19,16 @@ along with this program.If not, see <http://www.gnu.org/licenses/>.
 
 //send by transmitter
 struct LoraTxMessage {
-   uint8_t id;
-   uint8_t pullValue;
-   uint8_t pullValueBackup;
+   uint8_t id : 4;              // unique id 1 - 15, id 0 is admin!
+   uint8_t currentState : 4;    // +2 --> -2 = hard brake -1 = soft brake, 0 = no pull / no brake, 1 = default pull (2kg), 2 = pre pull, 3 = take off pull, 4 = full pull, 5 = extra strong pull
+   uint8_t pullValue;           // target pull value,  0 - 5 brake, 5 - 255 pull
+   uint8_t pullValueBackup;     // to avoid transmission issues, TODO remove, CRC is enough??
 };
 //send by receiver (acknowledgement)
 struct LoraRxMessage {
-   uint8_t pullValue;
-   uint8_t tachometer;    //*10 --> in m
+   uint8_t pullValue;           // currently active pull value, 0 - 5 brake, 5 - 255 pull
+   uint8_t tachometer;          // *10 --> in meter
    uint8_t dutyCycleNow;
-   uint8_t vescBatteryPercentage;
-   uint8_t vescTempMotor;
+   uint8_t vescBatteryOrTempMotor : 1 ;  // 0 ==> vescTempMotor , 1 ==> vescBatteryPercentage
+   uint8_t vescBatteryOrTempMotorValue  : 7 ;   //0 - 127
 };

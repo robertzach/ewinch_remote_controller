@@ -68,6 +68,8 @@ int takeOffPullScale = 50;  //in %
 int fullPullScale = 80;     //in %
 int strongPullScale = 100;  //in %
 
+uint8_t vescBattery = 0;
+uint8_t vescTempMotor = 0;
 unsigned long lastTxLoraMessageMillis = 0;
 unsigned long previousTxLoraMessageMillis = 0;
 unsigned long lastRxLoraMessageMillis = 0;
@@ -144,7 +146,7 @@ void loop() {
       display.drawString(0, 11, String("Pull: ") + currentPull);
       display.setFont(ArialMT_Plain_10);  //10, 16, 24
       //display.drawString(0, 36, String("Error / Uptime{min}: ") + loraErrorCount + " / " + millis()/60000);
-      display.drawString(0, 36, String("B: ") + loraRxMessage.vescBatteryPercentage + "%, M " + loraRxMessage.vescTempMotor + "C");
+      display.drawString(0, 36, String("B: ") + vescBattery + "%, M " + vescTempMotor + "C");
       display.drawString(0, 48, String("Last TX / RX: ") + lastTxLoraMessageMillis/100 + " / " + lastRxLoraMessageMillis/100);
       display.display();
     }
@@ -174,10 +176,16 @@ void loop() {
           // send ackn after receiving a value
           delay(10);
           loraRxMessage.pullValue = currentPull;
-          loraRxMessage.tachometer = abs(vescUART.data.tachometer)/1000;     // %100 --> in m, %10 --> to use only one byte for up to 2500m
+          loraRxMessage.tachometer = abs(vescUART.data.tachometer)/1000;     // %100 --> in m, %10 --> to use only one byte for up to 2550m line lenght
           loraRxMessage.dutyCycleNow = vescUART.data.dutyCycleNow * 100;     //in %
-          loraRxMessage.vescBatteryPercentage = CapCheckPerc(vescUART.data.inpVoltage, numberOfCells);    // in %
-          loraRxMessage.vescTempMotor = vescUART.data.tempMotor;
+          // alternate vescBatteryPercentage and vescTempMotor value on lora link to reduce packet size
+          if (loraRxMessage.vescBatteryOrTempMotor == 0){
+            loraRxMessage.vescBatteryOrTempMotor = 1;
+            loraRxMessage.vescBatteryOrTempMotorValue = vescBattery;
+          } else {
+            loraRxMessage.vescBatteryOrTempMotor = 0;
+            loraRxMessage.vescBatteryOrTempMotorValue = vescTempMotor;
+          }
           if (LoRa.beginPacket()) {
               LoRa.write((uint8_t*)&loraRxMessage, sizeof(loraRxMessage));
               LoRa.endPacket();
@@ -263,6 +271,8 @@ void loop() {
       //read actual Vesc values from uart
       if (loopStep % 20 == 0) {
         if (vescUART.getVescValues()) {
+            vescBattery = CapCheckPerc(vescUART.data.inpVoltage, numberOfCells);    // vesc battery in %
+            vescTempMotor = vescUART.data.tempMotor;                                // motor temp in C
             //SerialPrint(measuredVescVal, &DEBUGSERIAL);
             /*
             Serial.println(vescUART.data.tachometer);

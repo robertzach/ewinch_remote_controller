@@ -59,6 +59,9 @@ int fullPullScale = 80;     //in %
 int strongPullScale = 100;  //in %
 unsigned long lastStateSwitchMillis = 0;
 
+uint8_t vescBattery = 0;
+uint8_t vescTempMotor = 0;
+
 #include "common.h"
 struct LoraTxMessage loraTxMessage;
 struct LoraRxMessage loraRxMessage;
@@ -128,7 +131,7 @@ void loop() {
       display.setTextAlignment(TEXT_ALIGN_LEFT);
       display.setFont(ArialMT_Plain_16);  //10, 16, 24
       if (toogleSlow) {
-          display.drawString(0, 0, String("B: ") + loraRxMessage.vescBatteryPercentage + "%, T: " + loraRxMessage.vescTempMotor + " C");        
+          display.drawString(0, 0, String("B: ") + vescBattery + "%, T: " + vescTempMotor + " C");        
       } else {
           display.drawString(0, 0, String("T-") + loraTxMessage.id + ": " + BL.getBatteryChargeLevel() + "%, " + rssi + "dBm, " + snr + ")");        
       }
@@ -143,7 +146,12 @@ void loop() {
     if (LoRa.parsePacket() >= sizeof(loraRxMessage) ) {
         LoRa.readBytes((uint8_t *)&loraRxMessage, sizeof(loraRxMessage));
         currentPull = loraRxMessage.pullValue;
-        //TODO get duty cycle, battery % and motor temp
+        // vescBatteryPercentage and vescTempMotor are alternated on lora link to reduce packet size
+          if (loraRxMessage.vescBatteryOrTempMotor == 1){
+            vescBattery = loraRxMessage.vescBatteryOrTempMotorValue;
+          } else {
+            vescTempMotor = loraRxMessage.vescBatteryOrTempMotorValue;
+          }
         previousRxLoraMessageMillis = lastRxLoraMessageMillis;  // remember time of previous paket
         lastRxLoraMessageMillis = millis();
         rssi = LoRa.packetRssi();
@@ -204,6 +212,7 @@ void loop() {
         // send immediatly if state has changed
         if (millis() > lastTxLoraMessageMillis + 400 || stateChanged) {
             stateChanged = false;
+            loraTxMessage.currentState = currentState + 2;  // add offset because of negative states
             loraTxMessage.pullValue = targetPull;
             loraTxMessage.pullValueBackup = targetPull;
             if (LoRa.beginPacket()) {
