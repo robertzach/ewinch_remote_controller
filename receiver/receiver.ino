@@ -160,7 +160,7 @@ void loop() {
     
     // LoRa data available?
     // packet from transmitter
-    if (LoRa.parsePacket() >= sizeof(loraTxMessage) ) {
+    if (LoRa.parsePacket() == sizeof(loraTxMessage) ) {
       LoRa.readBytes((uint8_t *)&loraTxMessage, sizeof(loraTxMessage));
       // allow only one ID to control the winch at a given time
       // after 5 seconds without a message, a new id is allowed

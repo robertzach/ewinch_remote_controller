@@ -154,9 +154,9 @@ void loop() {
       display.setTextAlignment(TEXT_ALIGN_LEFT);
       display.setFont(ArialMT_Plain_16);  //10, 16, 24
       if (toogleSlow) {
-          display.drawString(0, 0, String("B: ") + vescBattery + "%, T: " + vescTempMotor + " C");        
+          display.drawString(0, 0, loraTxMessage.id + String("-B: ") + vescBattery + "%, T: " + vescTempMotor + " C");        
       } else {
-          display.drawString(0, 0, String("T-") + loraTxMessage.id + ": " + BL.getBatteryChargeLevel() + "%, " + rssi + "dBm, " + snr + ")");        
+          display.drawString(0, 0, loraTxMessage.id + String("-T: ") + BL.getBatteryChargeLevel() + "%, " + rssi + "dBm, " + snr + ")");        
       }
       display.setFont(ArialMT_Plain_24);  //10, 16, 24
       display.drawString(0, 14, String(currentState) + String(" (") + targetPull + "/" + currentPull + String(")"));
@@ -166,7 +166,7 @@ void loop() {
     
     // LoRa data available?
     //==acknowledgement from receiver?
-    if (LoRa.parsePacket() >= sizeof(loraRxMessage) ) {
+    if (LoRa.parsePacket() == sizeof(loraRxMessage) ) {
         LoRa.readBytes((uint8_t *)&loraRxMessage, sizeof(loraRxMessage));
         currentPull = loraRxMessage.pullValue;
         // vescBatteryPercentage and vescTempMotor are alternated on lora link to reduce packet size
