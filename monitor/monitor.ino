@@ -40,6 +40,9 @@ bool stateChanged = false;
 int currentState = 0;   // -1 = stopped/brake, 0 = no pull/no brake, 1 = default pull (2kg), 2 = pre pull, 3 = take off pull, 4 = full pull, 5 = extra strong pull
 unsigned long lastStateSwitchMillis = 0;
 
+uint8_t vescBattery = 0;
+uint8_t vescTempMotor = 0;
+
 #include "common.h"
 struct LoraTxMessage loraTxMessage;
 struct LoraRxMessage loraRxMessage;
@@ -100,9 +103,9 @@ void loop() {
       display.setTextAlignment(TEXT_ALIGN_LEFT);
       display.setFont(ArialMT_Plain_16);  //10, 16, 24
       if (toogleSlow) {
-          display.drawString(0, 0, String("B: ") + loraRxMessage.vescBatteryPercentage + "%, T: " + loraRxMessage.vescTempMotor + " C");        
+          display.drawString(0, 0, loraTxMessage.id + String("-B: ") + vescBattery + "%, T: " + vescTempMotor + " C");        
       } else {
-          display.drawString(0, 0, String("T-") + loraTxMessage.id + ": " + BL.getBatteryChargeLevel() + "%, " + rssi + "dBm, " + snr + ")");        
+          display.drawString(0, 0, loraTxMessage.id + String("-T:") + ": " + BL.getBatteryChargeLevel() + "%, " + rssi + "dBm, " + snr + ")");        
       }
       display.setFont(ArialMT_Plain_24);  //10, 16, 24
       display.drawString(0, 14, String(currentState) + String(" (") + targetPull + "/" + currentPull + String(")"));
@@ -111,11 +114,14 @@ void loop() {
     }
     
     // LoRa data available?
+    int loraPacketSize = 0;
+    loraPacketSize = LoRa.parsePacket();
     // == packet from transmitter?
-    if (LoRa.parsePacket() >= sizeof(loraTxMessage) ) {
+    if (loraPacketSize == sizeof(loraTxMessage) ) {
       LoRa.readBytes((uint8_t *)&loraTxMessage, sizeof(loraTxMessage));
       if ( loraTxMessage.pullValue == loraTxMessage.pullValueBackup) {
           targetPull = loraTxMessage.pullValue;
+          currentState = loraTxMessage.currentState - 2;
           previousTxLoraMessageMillis = lastTxLoraMessageMillis;  // remember time of previous paket
           lastTxLoraMessageMillis = millis();
           rssi = LoRa.packetRssi();
@@ -124,9 +130,15 @@ void loop() {
       }
    }
     //==acknowledgement from receiver?
-    if (LoRa.parsePacket() >= sizeof(loraRxMessage) ) {
+    if (loraPacketSize == sizeof(loraRxMessage) ) {
         LoRa.readBytes((uint8_t *)&loraRxMessage, sizeof(loraRxMessage));
         currentPull = loraRxMessage.pullValue;
+        // vescBatteryPercentage and vescTempMotor are alternated on lora link to reduce packet size
+          if (loraRxMessage.vescBatteryOrTempMotor == 1){
+            vescBattery = loraRxMessage.vescBatteryOrTempMotorValue;
+          } else {
+            vescTempMotor = loraRxMessage.vescBatteryOrTempMotorValue;
+          }
         previousRxLoraMessageMillis = lastRxLoraMessageMillis;  // remember time of previous paket
         lastRxLoraMessageMillis = millis();
         rssi = LoRa.packetRssi();
