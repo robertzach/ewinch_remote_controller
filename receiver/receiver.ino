@@ -60,8 +60,8 @@ struct LoraTxMessage loraTxMessage;
 struct LoraRxMessage loraRxMessage;
 
 int currentId = 0;
-int currentState = 0;
-int currentPull = 0;    // pull value send to VESC
+int currentState = -1;
+int currentPull = 3;    // pull value send to VESC
 uint8_t loraPullValue = 0;    // received from lora transmitter
 int smoothStep = 0;    // used to smooth pull changes
 int defaultPullScale = 11;  //in %
@@ -185,7 +185,7 @@ void loop() {
           delay(10);
           loraRxMessage.pullValue = currentPull;
           loraRxMessage.tachometer = abs(vescUART.data.tachometer)/1000;     // %100 --> in m, %10 --> to use only one byte for up to 2550m line lenght
-          loraRxMessage.dutyCycleNow = vescUART.data.dutyCycleNow * 100;     //in %
+          loraRxMessage.dutyCycleNow = abs(vescUART.data.dutyCycleNow * 100);     //in %
           // alternate vescBatteryPercentage and vescTempMotor value on lora link to reduce packet size
           if (loraRxMessage.vescBatteryOrTempMotor == 0){
             loraRxMessage.vescBatteryOrTempMotor = 1;
@@ -280,7 +280,7 @@ void loop() {
       if (loopStep % 20 == 0) {
         if (vescUART.getVescValues()) {
             vescBattery = CapCheckPerc(vescUART.data.inpVoltage, numberOfCells);    // vesc battery in %
-            vescTempMotor = vescUART.data.tempMotor;                                // motor temp in C
+            vescTempMotor = vescUART.data.tempMotor;                                // motor temp in C            
             //SerialPrint(measuredVescVal, &DEBUGSERIAL);
             /*
             Serial.println(vescUART.data.tachometer);
