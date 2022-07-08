@@ -7,7 +7,7 @@
  */
 // communication is locked to a specific transmitter for 5 seconds after his last message
 // admin ID 0 can allays take over communication
-static int myID = 0;    // set to your desired transmitter id!!! [unique number from 1 - 15]
+static int myID = 1;    // set to your desired transmitter id!!! [unique number from 1 - 15]
 
 #include <Pangodream_18650_CL.h>
 #include <SPI.h>
@@ -52,9 +52,9 @@ uint8_t targetPull = 0;   // pull value range from 0 - 255
 int currentPull = 0;          // current active pull on vesc
 bool stateChanged = false;
 int currentState = -1;   // -1 = stopped/brake, 0 = no pull/no brake, 1 = default pull (2kg), 2 = pre pull, 3 = take off pull, 4 = full pull, 5 = extra strong pull
-int defaultPullScale = 11;  //in %
+int defaultPullScale = 10;  //in %
 int prePullScale = 20;      //in %
-int takeOffPullScale = 50;  //in %
+int takeOffPullScale = 57;  //in %
 int fullPullScale = 80;     //in %
 int strongPullScale = 100;  //in %
 unsigned long lastStateSwitchMillis = 0;
@@ -203,7 +203,7 @@ void loop() {
               targetPull = 0; // -> hard brake
               break;
             case -1:
-              targetPull = 3; // -> soft brake
+              targetPull = 2; // -> soft brake
               break;
             case 0:
               targetPull = 5; // -> neutral, no pull / no brake
@@ -281,7 +281,7 @@ void btnPressed(Button2& btn) {
 }
 
 void btnDownLongClickDetected(Button2& btn) {
-    currentState = -2;    //brake
+    currentState = -1;    //brake
     lastStateSwitchMillis = millis();
     stateChanged = true;
 }
