@@ -3,7 +3,7 @@
     <ConfigVersion>2</ConfigVersion>
     <controller_id>111</controller_id>
     <timeout_msec>1000</timeout_msec>
-    <timeout_brake_current>5</timeout_brake_current>
+    <timeout_brake_current>10</timeout_brake_current>
     <send_can_status>0</send_can_status>
     <send_can_status_rate_hz>50</send_can_status_rate_hz>
     <can_baud_rate>2</can_baud_rate>
@@ -16,15 +16,15 @@
     <uavcan_raw_rpm_max>50000</uavcan_raw_rpm_max>
     <servo_out_enable>0</servo_out_enable>
     <kill_sw_mode>0</kill_sw_mode>
-    <app_to_use>1</app_to_use>
+    <app_to_use>4</app_to_use>
     <app_ppm_conf.ctrl_type>3</app_ppm_conf.ctrl_type>
     <app_ppm_conf.pid_max_erpm>15000</app_ppm_conf.pid_max_erpm>
     <app_ppm_conf.hyst>0.03</app_ppm_conf.hyst>
-    <app_ppm_conf.pulse_start>0.75</app_ppm_conf.pulse_start>
-    <app_ppm_conf.pulse_end>1.906</app_ppm_conf.pulse_end>
-    <app_ppm_conf.pulse_center>0.952</app_ppm_conf.pulse_center>
+    <app_ppm_conf.pulse_start>1.1</app_ppm_conf.pulse_start>
+    <app_ppm_conf.pulse_end>1.768</app_ppm_conf.pulse_end>
+    <app_ppm_conf.pulse_center>1.459</app_ppm_conf.pulse_center>
     <app_ppm_conf.median_filter>1</app_ppm_conf.median_filter>
-    <app_ppm_conf.safe_start>1</app_ppm_conf.safe_start>
+    <app_ppm_conf.safe_start>0</app_ppm_conf.safe_start>
     <app_ppm_conf.throttle_exp>0</app_ppm_conf.throttle_exp>
     <app_ppm_conf.throttle_exp_brake>0</app_ppm_conf.throttle_exp_brake>
     <app_ppm_conf.throttle_exp_mode>1</app_ppm_conf.throttle_exp_mode>
