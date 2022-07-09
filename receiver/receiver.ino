@@ -74,7 +74,7 @@ int currentState = -1;
 // pull value send to VESC --> default soft brake
 // defined as int to allow smooth changes without overrun
 int currentPull = softBrake;     // active range -127 to 127
-int8_t loraPullValue = 0;    // received from lora transmitter
+int8_t targetPullValue = 0;    // received from lora transmitter or rewinding winch mode
 
 
 uint8_t vescBattery = 0;
@@ -143,8 +143,9 @@ void setup() {
 
 void loop() {
 
-    loopStep++;
-  
+ loopStep++;
+ // TODO activate rewinding winch mode here
+ if (true) {
     // screen
     if (loopStep % 10 == 0) {
       display.clear();
@@ -164,110 +165,152 @@ void loop() {
       display.display();
     }
     
-    
     // LoRa data available?
     // packet from transmitter
     if (LoRa.parsePacket() == sizeof(loraTxMessage) ) {
-      LoRa.readBytes((uint8_t *)&loraTxMessage, sizeof(loraTxMessage));
-      // allow only one ID to control the winch at a given time
-      // after 5 seconds without a message, a new id is allowed
-      if (millis() > lastTxLoraMessageMillis + 5000){
-        activeTxId = loraTxMessage.id;
-      }
-      // The admin id 0 can allways take over
-      if (loraTxMessage.id == 0){
-        activeTxId = loraTxMessage.id;
-      }
-      if (loraTxMessage.id == activeTxId && loraTxMessage.pullValue == loraTxMessage.pullValueBackup) {
-          loraPullValue = loraTxMessage.pullValue;
-          currentId = loraTxMessage.id;
-          currentState = loraTxMessage.currentState;
-          previousTxLoraMessageMillis = lastTxLoraMessageMillis;  // remember time of previous paket
-          lastTxLoraMessageMillis = millis();
-          rssi = LoRa.packetRssi();
-          snr = LoRa.packetSnr();
-          Serial.printf("Value received: %d, RSSI: %d: , SNR: %d \n", loraTxMessage.pullValue, rssi, snr);
-          
-          // send ackn after receiving a value
-          delay(10);
-          loraRxMessage.pullValue = currentPull;
-          loraRxMessage.tachometer = abs(vescUART.data.tachometer)/1000;     // %100 --> in m, %10 --> to use only one byte for up to 2550m line lenght
-          loraRxMessage.dutyCycleNow = abs(vescUART.data.dutyCycleNow * 100);     //in %
-          // alternate vescBatteryPercentage and vescTempMotor value on lora link to reduce packet size
-          if (loraRxMessage.vescBatteryOrTempMotor == 0){
-            loraRxMessage.vescBatteryOrTempMotor = 1;
-            loraRxMessage.vescBatteryOrTempMotorValue = vescBattery;
-          } else {
-            loraRxMessage.vescBatteryOrTempMotor = 0;
-            loraRxMessage.vescBatteryOrTempMotorValue = vescTempMotor;
+          LoRa.readBytes((uint8_t *)&loraTxMessage, sizeof(loraTxMessage));
+          // allow only one ID to control the winch at a given time
+          // after 5 seconds without a message, a new id is allowed
+          if (millis() > lastTxLoraMessageMillis + 5000){
+            activeTxId = loraTxMessage.id;
           }
-          if (LoRa.beginPacket()) {
-              LoRa.write((uint8_t*)&loraRxMessage, sizeof(loraRxMessage));
-              LoRa.endPacket();
-              Serial.printf("sending Ackn currentPull %d: \n", currentPull);
-              lastRxLoraMessageMillis = millis();  
-          } else {
-              Serial.println("Lora send busy");
+          // The admin id 0 can allways take over
+          if (loraTxMessage.id == 0){
+            activeTxId = loraTxMessage.id;
           }
-          
-      } else {
-        Serial.println("Wrong transmitter id or backup Value:");
-        Serial.println(loraTxMessage.id);
-        Serial.println(loraTxMessage.pullValue);
-        Serial.println(loraTxMessage.pullValueBackup);
-      }
-   }
+          if (loraTxMessage.id == activeTxId && loraTxMessage.pullValue == loraTxMessage.pullValueBackup) {
+              targetPullValue = loraTxMessage.pullValue;
+              currentId = loraTxMessage.id;
+              currentState = loraTxMessage.currentState;
+              previousTxLoraMessageMillis = lastTxLoraMessageMillis;  // remember time of previous paket
+              lastTxLoraMessageMillis = millis();
+              rssi = LoRa.packetRssi();
+              snr = LoRa.packetSnr();
+              Serial.printf("Value received: %d, RSSI: %d: , SNR: %d \n", loraTxMessage.pullValue, rssi, snr);
+              
+              // send ackn after receiving a value
+              delay(10);
+              loraRxMessage.pullValue = currentPull;
+              loraRxMessage.tachometer = abs(vescUART.data.tachometer)/1000;     // %100 --> in m, %10 --> to use only one byte for up to 2550m line lenght
+              loraRxMessage.dutyCycleNow = abs(vescUART.data.dutyCycleNow * 100);     //in %
+              // alternate vescBatteryPercentage and vescTempMotor value on lora link to reduce packet size
+              if (loraRxMessage.vescBatteryOrTempMotor == 0){
+                loraRxMessage.vescBatteryOrTempMotor = 1;
+                loraRxMessage.vescBatteryOrTempMotorValue = vescBattery;
+              } else {
+                loraRxMessage.vescBatteryOrTempMotor = 0;
+                loraRxMessage.vescBatteryOrTempMotorValue = vescTempMotor;
+              }
+              if (LoRa.beginPacket()) {
+                  LoRa.write((uint8_t*)&loraRxMessage, sizeof(loraRxMessage));
+                  LoRa.endPacket();
+                  Serial.printf("sending Ackn currentPull %d: \n", currentPull);
+                  lastRxLoraMessageMillis = millis();  
+              } else {
+                  Serial.println("Lora send busy");
+              }
+              
+          } else {
+            Serial.println("Wrong transmitter id or backup Value:");
+            Serial.println(loraTxMessage.id);
+            Serial.println(loraTxMessage.pullValue);
+            Serial.println(loraTxMessage.pullValueBackup);
+          }
+     }
   
-  // if no lora message for more then 1,5s --> show error on screen + acustic
-  if (millis() > lastTxLoraMessageMillis + 1500 ) {
-        //TODO acustic information
-        //TODO  red disply
-        display.clear();
-        display.display();
-        // log connection error
-       if (millis() > loraErrorMillis + 5000) {
-            loraErrorMillis = millis();
-            loraErrorCount = loraErrorCount + 1;
-       }
-  }
-
-
-  // Failsafe only when pull was active
-  if (currentState >= 1) {
-        // no packet for 1,5s --> failsave
-        if (millis() > lastTxLoraMessageMillis + 1500 ) {
-             // A) keep default pull if connection issue during pull for up to 10 seconds
-             if (millis() < lastTxLoraMessageMillis + 20000) {
-                loraPullValue = defaultPull;   // default pull
-                currentState = 1;
-             } else {
-             // B) go to soft brake afterwards
-                loraPullValue = softBrake;     // soft brake
-                currentState = -1;
-             }
-        }
-  }
+      // if no lora message for more then 1,5s --> show error on screen + acustic
+      if (millis() > lastTxLoraMessageMillis + 1500 ) {
+            //TODO acustic information
+            //TODO  red disply
+            display.clear();
+            display.display();
+            // log connection error
+           if (millis() > loraErrorMillis + 5000) {
+                loraErrorMillis = millis();
+                loraErrorCount = loraErrorCount + 1;
+           }
+      }
+      // Failsafe only when pull was active
+      if (currentState >= 1) {
+            // no packet for 1,5s --> failsave
+            if (millis() > lastTxLoraMessageMillis + 1500 ) {
+                 // A) keep default pull if connection issue during pull for up to 10 seconds
+                 if (millis() < lastTxLoraMessageMillis + 20000) {
+                    targetPullValue = defaultPull;   // default pull
+                    currentState = 1;
+                 } else {
+                 // B) go to soft brake afterwards
+                    targetPullValue = softBrake;     // soft brake
+                    currentState = -1;
+                 }
+            }
+      }
       
+
+ } else {
+      // rewinding winch mode
+      // screen
+      if (loopStep % 10 == 0) {
+        display.clear();
+        display.setTextAlignment(TEXT_ALIGN_LEFT);
+        display.setFont(ArialMT_Plain_10);  //10, 16, 24
+        display.drawString(0, 0, "rewinding winch mode");
+        display.setFont(ArialMT_Plain_24);  //10, 16, 24
+        display.drawString(0, 14, String(targetPullValue) + "/" + currentPull + "kg");
+        display.display();
+      }
+
+      // small pull value on pull out
+      // higher pull value on pull in
+      if (vescUART.data.dutyCycleNow > 0.02){
+        targetPullValue = 10;
+      } else if (vescUART.data.dutyCycleNow < -0.02){
+        targetPullValue = 17;
+      } else {
+        targetPullValue = -5; // no line movement --> soft brake
+      }
+      
+      // ??? TODO higher pull value on fast pull out to avoid drum overshoot on line disconection ???
+      
+ }  // end rewind winch mode
+
+
+      // auto line stop (smouth to avoid line issues on main winch with rewinding winch)
+      // tachometer > 2 --> avoid autostop when no tachometer values are read from uart (--> 0)
+      if (vescUART.data.tachometer > 2 && vescUART.data.tachometer < 40) {
+          if (targetPullValue > defaultPull){
+              targetPullValue = defaultPull;
+          }
+          if (vescUART.data.tachometer < 20) {
+              targetPullValue = softBrake;
+          }
+          if (vescUART.data.tachometer < 10) {
+              targetPullValue = hardBrake;
+          }
+          Serial.println("Autostop active, target pull value:");
+          Serial.println(targetPullValue);
+      }
+ 
       //calculate PWM time for VESC
       // if brake --> immediately active
-      if (loraPullValue < 0 ){
-          currentPull = loraPullValue;
+      if (targetPullValue < 0 ){
+          currentPull = targetPullValue;
       } else {   
           // smooth changes --> change rate e.g. max. 50 kg / second
           //reduce pull
-          if (currentPull > loraPullValue) {
+          if (currentPull > targetPullValue) {
               smoothStep = 90 * (millis() - lastWritePWMMillis) / 1000;
-              if ((currentPull - smoothStep) > loraPullValue)   //avoid overshooting
+              if ((currentPull - smoothStep) > targetPullValue)   //avoid overshooting
                   currentPull = currentPull - smoothStep;
               else
-                  currentPull = loraPullValue;
+                  currentPull = targetPullValue;
           //increase pull
-          } else if (currentPull < loraPullValue) {
+          } else if (currentPull < targetPullValue) {
               smoothStep = 65 * (millis() - lastWritePWMMillis) / 1000;
-              if ((currentPull + smoothStep) < loraPullValue)   //avoid overshooting
+              if ((currentPull + smoothStep) < targetPullValue)   //avoid overshooting
                   currentPull = currentPull + smoothStep;
               else
-                  currentPull = loraPullValue;
+                  currentPull = targetPullValue;
           }
           //Serial.println(currentPull);
           //avoid overrun
@@ -278,31 +321,6 @@ void loop() {
       }
       
       delay(10);
-
-/*
-      // TODO add rewinding winch mode here
-      // small pull value on pull out
-      // higher pull value on pull in
-      // higher pull value on fast pull out ???
-      // smouth stop
-      
-      // TODO test this!!!
-      // add auto line stopp:
-      // only when pull is active
-      // tachometer > 2 --> avoid autostop when no tachometer values are read from uart (--> 0)
-      if (currentState > 0 && vescUART.data.tachometer > 2 && vescUART.data.tachometer < 40) {
-        // smouth reduce pull to 0
-        if (vescUART.data.tachometer > 20){
-            currentPull = vescUART.data.tachometer;
-        } else {
-            currentPull = 0;
-        }
-        Serial.println("Autostop active, pull value:");
-        Serial.println(currentPull);
-      }
-*/
-      
-
       // write PWM signal to VESC
       pwmWriteTimeValue = (currentPull + 127) * (PWM_TIME_100 - PWM_TIME_0) / 254 + PWM_TIME_0;     
       pulseOut(PWM_PIN_OUT, pwmWriteTimeValue);
