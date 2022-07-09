@@ -8,6 +8,7 @@
 // communication is locked to a specific transmitter for 5 seconds after his last message
 // admin ID 0 can allays take over communication
 static int myID = 1;    // set to your desired transmitter id!!! [unique number from 1 - 15]
+static int myMaxPull = 75;  // 0 - 127 [kg], must be scaled with VESC ppm settings
 
 #include <Pangodream_18650_CL.h>
 #include <SPI.h>
@@ -48,13 +49,15 @@ Button2 btnDown = Button2(BUTTON_DOWN);
 
 static int loopStep = 0;
 bool toogleSlow = true;
-uint8_t targetPull = 0;   // pull value range from 0 - 255
+int8_t targetPull = 0;   // pull value range from -127 to 127
 int currentPull = 0;          // current active pull on vesc
 bool stateChanged = false;
-int currentState = -1;   // -1 = stopped/brake, 0 = no pull/no brake, 1 = default pull (2kg), 2 = pre pull, 3 = take off pull, 4 = full pull, 5 = extra strong pull
-int defaultPullScale = 10;  //in %
+int currentState = -1;   // -2 = hard brake, -1 = soft brake, 0 = no pull/no brake, 1 = default pull (~3kg), 2 = pre pull, 3 = take off pull, 4 = full pull, 5 = extra strong pull
+int hardBrakeScale = -20;  //in %
+int softBrakeScale = -11;  //in %
+int defaultPullScale = 9;  //in %
 int prePullScale = 20;      //in %
-int takeOffPullScale = 57;  //in %
+int takeOffPullScale = 55;  //in %
 int fullPullScale = 80;     //in %
 int strongPullScale = 100;  //in %
 unsigned long lastStateSwitchMillis = 0;
@@ -117,6 +120,12 @@ void setup() {
 
   // admin --> scan for existing transmitter for a few seconds --> start up with his current pull state
   if (myID == 0 ) {
+      display.clear();
+      display.setTextAlignment(TEXT_ALIGN_LEFT);
+      display.setFont(ArialMT_Plain_16);
+      display.drawString(0, 0, "Searching 4s for");
+      display.drawString(0, 14, "existing transmitter...");
+      display.display();
       lastTxLoraMessageMillis = millis();
       while (millis() < lastTxLoraMessageMillis + 4000) {
           // packet from transmitter
@@ -124,7 +133,7 @@ void setup() {
             LoRa.readBytes((uint8_t *)&loraTxMessage, sizeof(loraTxMessage));
             if (loraTxMessage.pullValue == loraTxMessage.pullValueBackup) {
                 //found --> read state and exit
-                currentState = loraTxMessage.currentState - 2;
+                currentState = loraTxMessage.currentState;
                 targetPull = loraTxMessage.pullValue;
                 Serial.printf("Found existing transmitter, starting up with state: %d: %d \n", currentState, targetPull);
                 //exit search loop
@@ -159,8 +168,8 @@ void loop() {
           display.drawString(0, 0, loraTxMessage.id + String("-T: ") + BL.getBatteryChargeLevel() + "%, " + rssi + "dBm, " + snr + ")");        
       }
       display.setFont(ArialMT_Plain_24);  //10, 16, 24
-      display.drawString(0, 14, String(currentState) + String(" (") + targetPull + "/" + currentPull + String(")"));
-      display.drawString(0, 36, String(loraRxMessage.tachometer * 10) + " | " + String(loraRxMessage.dutyCycleNow) );
+      display.drawString(0, 14, String(currentState) + String(" (") + targetPull + "/" + currentPull + String("kg)"));
+      display.drawString(0, 36, String(loraRxMessage.tachometer * 10) + "m| " + String(loraRxMessage.dutyCycleNow) + "%" );
       display.display();
     }
     
@@ -200,31 +209,31 @@ void loop() {
         // -2 = hard brake -1 = soft brake, 0 = no pull / no brake, 1 = default pull (2kg), 2 = pre pull, 3 = take off pull, 4 = full pull, 5 = extra strong pull
         switch(currentState) {
             case -2:
-              targetPull = 0; // -> hard brake
+              targetPull = myMaxPull * hardBrakeScale / 100; // -> hard brake
               break;
             case -1:
-              targetPull = 2; // -> soft brake
+              targetPull = myMaxPull * softBrakeScale / 100; // -> soft brake
               break;
             case 0:
-              targetPull = 5; // -> neutral, no pull / no brake
+              targetPull = 0; // -> neutral, no pull / no brake
               break;
             case 1: 
-              targetPull = 255 * defaultPullScale / 100;
+              targetPull = myMaxPull * defaultPullScale / 100;
               break;
             case 2: 
-              targetPull = 255 * prePullScale / 100;
+              targetPull = myMaxPull * prePullScale / 100;
               break;
             case 3:
-              targetPull = 255 * takeOffPullScale / 100;
+              targetPull = myMaxPull * takeOffPullScale / 100;
               break;
             case 4:
-              targetPull = 255 * fullPullScale / 100;
+              targetPull = myMaxPull * fullPullScale / 100;
               break;
             case 5:
-              targetPull = 255 * strongPullScale / 100;
+              targetPull = myMaxPull * strongPullScale / 100;
               break;
             default: 
-              targetPull = 0;
+              targetPull = myMaxPull * softBrakeScale / 100 * -1; // -> soft brake;
               Serial.println("no valid state");
               break;
           }
@@ -235,7 +244,7 @@ void loop() {
         // send immediatly if state has changed
         if (millis() > lastTxLoraMessageMillis + 400 || stateChanged) {
             stateChanged = false;
-            loraTxMessage.currentState = currentState + 2;  // add offset because of negative states
+            loraTxMessage.currentState = currentState;
             loraTxMessage.pullValue = targetPull;
             loraTxMessage.pullValueBackup = targetPull;
             if (LoRa.beginPacket()) {

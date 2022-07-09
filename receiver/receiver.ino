@@ -9,6 +9,7 @@
 
 //vesc battery number of cells
 static int numberOfCells = 16;
+static int myMaxPull = 75;  // 0 - 127 [kg], must be scaled with VESC ppm settings
 
 #include "LiPoCheck.h"    //to calculate battery % based on cell Voltage
 
@@ -59,16 +60,22 @@ static uint8_t activeTxId = 0;
 struct LoraTxMessage loraTxMessage;
 struct LoraRxMessage loraRxMessage;
 
-int currentId = 0;
-int currentState = -1;
-int currentPull = 3;    // pull value send to VESC
-uint8_t loraPullValue = 0;    // received from lora transmitter
 int smoothStep = 0;    // used to smooth pull changes
+int hardBrakeScale = -20;  //in %
+int softBrakeScale = -10;  //in %
 int defaultPullScale = 11;  //in %
 int prePullScale = 20;      //in %
 int takeOffPullScale = 50;  //in %
 int fullPullScale = 80;     //in %
 int strongPullScale = 100;  //in %
+
+int currentId = 0;
+int currentState = -1;
+// pull value send to VESC --> default soft brake
+// defined as int to allow smooth changes without overrun
+int currentPull = myMaxPull * softBrakeScale / 100;     // active range -127 to 127
+int8_t loraPullValue = 0;    // received from lora transmitter
+
 
 uint8_t vescBattery = 0;
 uint8_t vescTempMotor = 0;
@@ -146,9 +153,9 @@ void loop() {
       display.drawString(0, 0, currentId + String("-RX: (") + BL.getBatteryChargeLevel() + "%, " + rssi + "dBm, " + snr + ")");
       display.setFont(ArialMT_Plain_24);  //10, 16, 24
       if (currentState > 0){
-          display.drawString(0, 11, String("P ") + currentState + ": (" + currentPull + ")");  
+          display.drawString(0, 11, String("P ") + currentState + ": (" + currentPull + "kg)");  
       } else {
-          display.drawString(0, 11, String("B ") + currentState + ": (" + currentPull + ")");    
+          display.drawString(0, 11, String("B ") + currentState + ": (" + currentPull + "kg)");    
       }
       display.setFont(ArialMT_Plain_10);  //10, 16, 24
       //display.drawString(0, 36, String("Error / Uptime{min}: ") + loraErrorCount + " / " + millis()/60000);
@@ -174,7 +181,7 @@ void loop() {
       if (loraTxMessage.id == activeTxId && loraTxMessage.pullValue == loraTxMessage.pullValueBackup) {
           loraPullValue = loraTxMessage.pullValue;
           currentId = loraTxMessage.id;
-          currentState = loraTxMessage.currentState - 2;
+          currentState = loraTxMessage.currentState;
           previousTxLoraMessageMillis = lastTxLoraMessageMillis;  // remember time of previous paket
           lastTxLoraMessageMillis = millis();
           rssi = LoRa.packetRssi();
@@ -226,51 +233,78 @@ void loop() {
 
 
   // Failsafe only when pull was active
-  if (loraPullValue >= (255 * defaultPullScale / 100)) {
+  if (currentState >= 1) {
         // no packet for 1,5s --> failsave
         if (millis() > lastTxLoraMessageMillis + 1500 ) {
              // A) keep default pull if connection issue during pull for up to 10 seconds
              if (millis() < lastTxLoraMessageMillis + 20000) {
-                loraPullValue = 255 * defaultPullScale / 100;   //default pull
+                loraPullValue = myMaxPull * defaultPullScale / 100;   // default pull
+                currentState = 1;
              } else {
              // B) go to soft brake afterwards
-                loraPullValue = 4;
+                loraPullValue = myMaxPull * softBrakeScale / 100;     // soft brake
+                currentState = -1;
              }
         }
   }
       
       //calculate PWM time for VESC
-      if (loraPullValue > 0 ){
-          // smooth changes --> change rate e.g. max. 200 / second
+      // if brake --> immediately active
+      if (loraPullValue < 0 ){
+          currentPull = loraPullValue;
+      } else {   
+          // smooth changes --> change rate e.g. max. 50 kg / second
           //reduce pull
           if (currentPull > loraPullValue) {
-              smoothStep = 200 * (millis() - lastWritePWMMillis) / 1000;
+              smoothStep = 80 * (millis() - lastWritePWMMillis) / 1000;
               if ((currentPull - smoothStep) > loraPullValue)   //avoid overshooting
                   currentPull = currentPull - smoothStep;
               else
                   currentPull = loraPullValue;
           //increase pull
           } else if (currentPull < loraPullValue) {
-              smoothStep = 120 * (millis() - lastWritePWMMillis) / 1000;
+              smoothStep = 50 * (millis() - lastWritePWMMillis) / 1000;
               if ((currentPull + smoothStep) < loraPullValue)   //avoid overshooting
                   currentPull = currentPull + smoothStep;
               else
                   currentPull = loraPullValue;
           }
+          //Serial.println(currentPull);
           //avoid overrun
-          if (currentPull < 0)
-            currentPull = 0;
-          if (currentPull > 255)
-            currentPull = 255;
-      } else {   // if 0 --> immediatly stop
-        currentPull = 0;
+          if (currentPull < -127)
+            currentPull = -127;
+          if (currentPull > 127)
+            currentPull = 127;
       }
       
       delay(10);
-      //TODO add auto line stopp here
+
+/*
+      // TODO add rewinding winch mode here
+      // small pull value on pull out
+      // higher pull value on pull in
+      // higher pull value on fast pull out ???
+      // smouth stop
+      
+      // TODO test this!!!
+      // add auto line stopp:
+      // only when pull is active
+      // tachometer > 2 --> avoid autostop when no tachometer values are read from uart (--> 0)
+      if (currentState > 0 && vescUART.data.tachometer > 2 && vescUART.data.tachometer < 40) {
+        // smouth reduce pull to 0
+        if (vescUART.data.tachometer > 20){
+            currentPull = vescUART.data.tachometer;
+        } else {
+            currentPull = 0;
+        }
+        Serial.println("Autostop active, pull value:");
+        Serial.println(currentPull);
+      }
+*/
+      
 
       // write PWM signal to VESC
-      pwmWriteTimeValue = currentPull * (PWM_TIME_100 - PWM_TIME_0) / 255 + PWM_TIME_0;     
+      pwmWriteTimeValue = (currentPull + 127) * (PWM_TIME_100 - PWM_TIME_0) / 254 + PWM_TIME_0;     
       pulseOut(PWM_PIN_OUT, pwmWriteTimeValue);
       lastWritePWMMillis = millis();
       delay(10);    //RC PWM usually has a signal every 20ms (50 Hz)

@@ -34,7 +34,7 @@ Pangodream_18650_CL BL(35); // pin 34 old / 35 new v2.1 hw
 
 static int loopStep = 0;
 bool toogleSlow = true;
-uint8_t targetPull = 0;   // pull value range from 0 - 255
+int8_t targetPull = 0;   // pull value range from -127 to 127
 int currentPull = 0;          // current active pull on vesc
 bool stateChanged = false;
 int currentState = 0;   // -1 = stopped/brake, 0 = no pull/no brake, 1 = default pull (2kg), 2 = pre pull, 3 = take off pull, 4 = full pull, 5 = extra strong pull
@@ -108,8 +108,8 @@ void loop() {
           display.drawString(0, 0, loraTxMessage.id + String("-T:") + ": " + BL.getBatteryChargeLevel() + "%, " + rssi + "dBm, " + snr + ")");        
       }
       display.setFont(ArialMT_Plain_24);  //10, 16, 24
-      display.drawString(0, 14, String(currentState) + String(" (") + targetPull + "/" + currentPull + String(")"));
-      display.drawString(0, 36, String(loraRxMessage.tachometer) + " | " + String(loraRxMessage.dutyCycleNow) );
+      display.drawString(0, 14, String(currentState) + String(" (") + targetPull + "/" + currentPull + String("kg)"));
+      display.drawString(0, 36, String(loraRxMessage.tachometer) + " m| " + String(loraRxMessage.dutyCycleNow) + "%");
       display.display();
     }
     
@@ -121,7 +121,7 @@ void loop() {
       LoRa.readBytes((uint8_t *)&loraTxMessage, sizeof(loraTxMessage));
       if ( loraTxMessage.pullValue == loraTxMessage.pullValueBackup) {
           targetPull = loraTxMessage.pullValue;
-          currentState = loraTxMessage.currentState - 2;
+          currentState = loraTxMessage.currentState;
           previousTxLoraMessageMillis = lastTxLoraMessageMillis;  // remember time of previous paket
           lastTxLoraMessageMillis = millis();
           rssi = LoRa.packetRssi();
