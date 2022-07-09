@@ -53,10 +53,10 @@ int8_t targetPull = 0;   // pull value range from -127 to 127
 int currentPull = 0;          // current active pull on vesc
 bool stateChanged = false;
 int currentState = -1;   // -2 = hard brake, -1 = soft brake, 0 = no pull/no brake, 1 = default pull (~3kg), 2 = pre pull, 3 = take off pull, 4 = full pull, 5 = extra strong pull
-int hardBrakeScale = -20;  //in %
-int softBrakeScale = -11;  //in %
-int defaultPullScale = 9;  //in %
-int prePullScale = 20;      //in %
+int hardBrake = -20;  //in kg
+int softBrake = -7;  //in kg
+int defaultPull = 7;  //in kg
+int prePullScale = 18;      //in %
 int takeOffPullScale = 55;  //in %
 int fullPullScale = 80;     //in %
 int strongPullScale = 100;  //in %
@@ -209,16 +209,16 @@ void loop() {
         // -2 = hard brake -1 = soft brake, 0 = no pull / no brake, 1 = default pull (2kg), 2 = pre pull, 3 = take off pull, 4 = full pull, 5 = extra strong pull
         switch(currentState) {
             case -2:
-              targetPull = myMaxPull * hardBrakeScale / 100; // -> hard brake
+              targetPull = hardBrake; // -> hard brake
               break;
             case -1:
-              targetPull = myMaxPull * softBrakeScale / 100; // -> soft brake
+              targetPull = softBrake; // -> soft brake
               break;
             case 0:
               targetPull = 0; // -> neutral, no pull / no brake
               break;
             case 1: 
-              targetPull = myMaxPull * defaultPullScale / 100;
+              targetPull = defaultPull;   //independent of max pull
               break;
             case 2: 
               targetPull = myMaxPull * prePullScale / 100;
@@ -233,7 +233,7 @@ void loop() {
               targetPull = myMaxPull * strongPullScale / 100;
               break;
             default: 
-              targetPull = myMaxPull * softBrakeScale / 100 * -1; // -> soft brake;
+              targetPull = softBrake;
               Serial.println("no valid state");
               break;
           }

@@ -61,19 +61,19 @@ struct LoraTxMessage loraTxMessage;
 struct LoraRxMessage loraRxMessage;
 
 int smoothStep = 0;    // used to smooth pull changes
-int hardBrakeScale = -20;  //in %
-int softBrakeScale = -10;  //in %
-int defaultPullScale = 11;  //in %
-int prePullScale = 20;      //in %
-int takeOffPullScale = 50;  //in %
-int fullPullScale = 80;     //in %
-int strongPullScale = 100;  //in %
+int hardBrake = -20;  //in kg
+int softBrake = -8;  //in kg
+int defaultPull = 8;  //in kg
+int prePullScale = 20;      //in % of myMaxPull
+int takeOffPullScale = 50;  //in % of myMaxPull
+int fullPullScale = 80;     //in % of myMaxPull
+int strongPullScale = 100;  //in % of myMaxPull
 
 int currentId = 0;
 int currentState = -1;
 // pull value send to VESC --> default soft brake
 // defined as int to allow smooth changes without overrun
-int currentPull = myMaxPull * softBrakeScale / 100;     // active range -127 to 127
+int currentPull = softBrake;     // active range -127 to 127
 int8_t loraPullValue = 0;    // received from lora transmitter
 
 
@@ -238,11 +238,11 @@ void loop() {
         if (millis() > lastTxLoraMessageMillis + 1500 ) {
              // A) keep default pull if connection issue during pull for up to 10 seconds
              if (millis() < lastTxLoraMessageMillis + 20000) {
-                loraPullValue = myMaxPull * defaultPullScale / 100;   // default pull
+                loraPullValue = defaultPull;   // default pull
                 currentState = 1;
              } else {
              // B) go to soft brake afterwards
-                loraPullValue = myMaxPull * softBrakeScale / 100;     // soft brake
+                loraPullValue = softBrake;     // soft brake
                 currentState = -1;
              }
         }
@@ -256,14 +256,14 @@ void loop() {
           // smooth changes --> change rate e.g. max. 50 kg / second
           //reduce pull
           if (currentPull > loraPullValue) {
-              smoothStep = 80 * (millis() - lastWritePWMMillis) / 1000;
+              smoothStep = 90 * (millis() - lastWritePWMMillis) / 1000;
               if ((currentPull - smoothStep) > loraPullValue)   //avoid overshooting
                   currentPull = currentPull - smoothStep;
               else
                   currentPull = loraPullValue;
           //increase pull
           } else if (currentPull < loraPullValue) {
-              smoothStep = 50 * (millis() - lastWritePWMMillis) / 1000;
+              smoothStep = 65 * (millis() - lastWritePWMMillis) / 1000;
               if ((currentPull + smoothStep) < loraPullValue)   //avoid overshooting
                   currentPull = currentPull + smoothStep;
               else
