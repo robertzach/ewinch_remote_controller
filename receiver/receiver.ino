@@ -269,13 +269,13 @@ void loop() {
       } else {
         targetPullValue = -5; // no line movement --> soft brake
       }
-      
       // ??? TODO higher pull value on fast pull out to avoid drum overshoot on line disconection ???
       
  }  // end rewind winch mode
 
 
-      // auto line stop (smouth to avoid line issues on main winch with rewinding winch)
+      // auto line stop
+      // (smouth to avoid line issues on main winch with rewinding winch)
       // tachometer > 2 --> avoid autostop when no tachometer values are read from uart (--> 0)
       if (vescUART.data.tachometer > 2 && vescUART.data.tachometer < 40) {
           if (targetPullValue > defaultPull){
@@ -291,12 +291,12 @@ void loop() {
           Serial.println(targetPullValue);
       }
  
-      //calculate PWM time for VESC
+      // smooth changes
       // if brake --> immediately active
       if (targetPullValue < 0 ){
           currentPull = targetPullValue;
       } else {   
-          // smooth changes --> change rate e.g. max. 50 kg / second
+          // change rate e.g. max. 50 kg / second
           //reduce pull
           if (currentPull > targetPullValue) {
               smoothStep = 90 * (millis() - lastWritePWMMillis) / 1000;
@@ -321,6 +321,7 @@ void loop() {
       }
       
       delay(10);
+      //calculate PWM time for VESC
       // write PWM signal to VESC
       pwmWriteTimeValue = (currentPull + 127) * (PWM_TIME_100 - PWM_TIME_0) / 254 + PWM_TIME_0;     
       pulseOut(PWM_PIN_OUT, pwmWriteTimeValue);
