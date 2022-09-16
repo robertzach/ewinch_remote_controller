@@ -5,7 +5,7 @@
  
  see https://www.youtube.com/watch?v=5IkagHkxbxY
 
- receiver uses PPM for driving the winch and (optinal) UART to read additional information (line length, battery %, dutycycle)
+ receiver uses PWM (Pulse Width Modulation) for driving the winch and (optional) UART to read additional information (line length, battery %, dutycycle)
  VESC UART communication depends on https://github.com/SolidGeek/VescUart/
 
 Pin Setup receiver:
