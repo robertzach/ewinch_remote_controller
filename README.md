@@ -4,11 +4,11 @@
  (http://www.lilygo.cn/prod_view.aspx?TypeId=50060&Id=1271&FId=t3:50060:3)
  
  see 
- https://www.youtube.com/watch?v=hUOhuwIBEUY
- https://www.youtube.com/watch?v=hVimrIMGMSY&t=1s
- https://www.youtube.com/watch?v=DOm1zkXft44
- https://www.youtube.com/watch?v=bxIVrh16ZTE
- https://www.youtube.com/watch?v=qTut_0KAwYU
+ - https://www.youtube.com/watch?v=hUOhuwIBEUY
+ - https://www.youtube.com/watch?v=hVimrIMGMSY&t=1s
+ - https://www.youtube.com/watch?v=DOm1zkXft44
+ - https://www.youtube.com/watch?v=bxIVrh16ZTE
+ - https://www.youtube.com/watch?v=qTut_0KAwYU
 
  receiver uses PPM for driving the winch and (optinal) UART to read additional information (line length, battery %, dutycycle)
  VESC UART communication depends on https://github.com/SolidGeek/VescUart/
