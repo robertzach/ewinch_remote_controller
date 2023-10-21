@@ -106,6 +106,8 @@ void setup() {
   //Serial.println(" Longpress Time: " + String(btnUp.getLongClickTime()) + "ms");
   //Serial.println(" DoubleClick Time: " + String(btnUp.getDoubleClickTime()) + "ms");
   btnUp.setPressedHandler(btnPressed);
+  btnUp.setLongClickTime(500);
+  btnUp.setLongClickDetectedHandler(btnUpLongClickDetected);
   btnDown.setPressedHandler(btnPressed);
   btnDown.setLongClickTime(500);
   btnDown.setLongClickDetectedHandler(btnDownLongClickDetected);
@@ -289,6 +291,15 @@ void btnPressed(Button2& btn) {
     }
 }
 
+//go down one State on a long click on the "up" button
+void btnUpLongClickDetected(Button2& btn) {
+  if (currentState > 1) {
+    currentState = currentState - 1;
+    lastStateSwitchMillis = millis();
+    stateChanged = true;
+  }
+}
+//long click on "down/stop" sets brake mode
 void btnDownLongClickDetected(Button2& btn) {
     currentState = -1;    //brake
     lastStateSwitchMillis = millis();
