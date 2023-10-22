@@ -56,7 +56,7 @@ int currentState = -1;   // -2 = hard brake, -1 = soft brake, 0 = no pull/no bra
 int hardBrake = -20;  //in kg
 int softBrake = -7;  //in kg
 int defaultPull = 7;  //in kg
-int prePullScale = 18;      //in %
+int prePullScale = 20;      //in %
 int takeOffPullScale = 55;  //in %
 int fullPullScale = 80;     //in %
 int strongPullScale = 100;  //in %
@@ -105,7 +105,7 @@ void setup() {
 
   //Serial.println(" Longpress Time: " + String(btnUp.getLongClickTime()) + "ms");
   //Serial.println(" DoubleClick Time: " + String(btnUp.getDoubleClickTime()) + "ms");
-  btnUp.setPressedHandler(btnPressed);
+  btnUp.setClickHandler(btnPressed);  //not called on long click
   btnUp.setLongClickTime(500);
   btnUp.setLongClickDetectedHandler(btnUpLongClickDetected);
   btnDown.setPressedHandler(btnPressed);
